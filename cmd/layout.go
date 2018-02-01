@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/fatih/structs"
+	"github.com/gobuffalo/buffalo/generators"
 	"github.com/gobuffalo/makr"
 	"github.com/gobuffalo/packr"
 	"github.com/markbates/inflect"
@@ -57,5 +58,22 @@ func (l Layout) Run() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
+	g.Add(&makr.Func{
+		Should: func(data makr.Data) bool { return true },
+		Runner: func(root string, data makr.Data) error {
+			err := generators.AddInsideAppBlock(
+				`app.Use(func (next buffalo.Handler) buffalo.Handler {
+					return func(c buffalo.Context) error {
+						c.Set("year", time.Now().Year())
+						return next(c)
+					}
+				})`,
+			)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			return generators.AddImport(filepath.Join("actions", "app.go"), "time")
+		},
+	})
 	return g.Run(".", structs.Map(l))
 }
